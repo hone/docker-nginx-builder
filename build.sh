@@ -19,5 +19,6 @@ cd nginx-$VERSION
 make
 make install
 cd $workspace_dir/build/sbin
+strip nginx
 mkdir -p $output_dir
 tar ckzf $output_dir/nginx-$VERSION.tgz nginx
