@@ -15,7 +15,7 @@ fi
 cd $workspace_dir
 tar zxf $cache_dir/$nginx_tarball
 cd nginx-$VERSION
-./configure --prefix=$workspace_dir/build
+./configure --prefix=$workspace_dir/build --with-http_ssl_module
 make
 make install
 cd $workspace_dir/build/sbin
