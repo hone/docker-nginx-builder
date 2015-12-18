@@ -25,7 +25,6 @@ else
     git submodule foreach git pull origin master
     popd
 fi
-
 cd $workspace_dir
 tar zxf $cache_dir/$nginx_tarball
 cp -rf $cache_dir/$ngx_mruby_dir .
