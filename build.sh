@@ -13,7 +13,7 @@ if [ ! -f $nginx_tarball ]; then
     echo "Downloading $nginx_tarball"
     curl -s -O -L "http://nginx.org/download/nginx-$VERSION.tar.gz"
 fi
-if [ ! -f $ngx_mruby_dir ]; then
+if [ ! -d $ngx_mruby_dir ]; then
     echo "Cloning $ngx_mruby_git"
     git clone $ngx_mruby_git
     pushd $ngx_mruby_dir
