@@ -34,6 +34,9 @@ ngx_mruby_src="$workspace_dir/$ngx_mruby_dir"
 
 pushd $ngx_mruby_dir
 ./configure --with-ngx-src-root=$nginx_src
+sed '28a\
+  conf.gem :core => \"mruby-eval\"\n' build_config.rb > new_build_config.rb
+mv new_build_config.rb build_config.rb
 make build_mruby
 make generate_gems_config
 popd
