@@ -42,7 +42,7 @@ make generate_gems_config
 popd
 
 cd $nginx_src
-./configure --prefix=$workspace_dir/build --with-http_ssl_module --add-module=$ngx_mruby_src --add-module=$ngx_mruby_src/dependence/ngx_devel_kit
+./configure --prefix=$workspace_dir/build --with-http_ssl_module --with-debug --add-module=$ngx_mruby_src --add-module=$ngx_mruby_src/dependence/ngx_devel_kit
 make
 make install
 
