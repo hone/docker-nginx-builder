@@ -1,0 +1,111 @@
+##
+##  Makefile -- Build procedure for ngx_mruby for nginx module
+##	  MATSUMOTO, Ryosuke
+##
+
+NUM_THREADS?= 1
+MAKE=make -j $(NUM_THREADS)
+RAKE=rake -j $(NUM_THREADS)
+
+NGX_MRUBY_ROOT=$(shell pwd)
+NGX_SRC_ROOT=@NGX_SRC_ROOT@
+NGX_CONFIG_OPT=@NGX_CONFIG_OPT@
+ifeq ($(wildcard $(NGX_SRC_ROOT)/auto/configure),)
+  NGX_CONFIGURE = ./configure
+else
+  # development branch does not have configure script in top of directory.
+  NGX_CONFIGURE = ./auto/configure
+endif
+
+MRUBY_ROOT=@MRUBY_ROOT@
+NDK_ROOT=@NDK_ROOT@
+
+#   suport mrbgems
+MRUBY_MAK_FILE := $(MRUBY_ROOT)/build/host/lib/libmruby.flags.mak
+ifeq ($(wildcard $(MRUBY_MAK_FILE)),)
+  MRUBY_CFLAGS =
+  MRUBY_LDFLAGS =
+  MRUBY_LIBS =
+  MRUBY_LDFLAGS_BEFORE_LIBS =
+else
+  include $(MRUBY_MAK_FILE)
+endif
+
+NGX_OPENSSL_SRC=@NGX_OPENSSL_SRC@
+NGX_OPENSSL_OPT=@NGX_OPENSSL_OPT@
+ifdef NGX_OPENSSL_SRC
+  NGX_CONFIG_OPT := --with-openssl="$(NGX_OPENSSL_SRC)" $(NGX_CONFIG_OPT)
+endif
+
+ifdef NGX_OPENSSL_OPT
+  NGX_CONFIG_OPT := --with-openssl-opt="$(NGX_OPENSSL_OPT)" $(NGX_CONFIG_OPT)
+endif
+
+#   flags
+CFLAGS = $(MRUBY_CFLAGS) -I/usr/local/include
+LDFLAGS = $(MRUBY_LDFLAGS) -L/usr/local/lib
+LIBS = $(MRUBY_LIBS) $(MRUBY_LDFLAGS_BEFORE_LIBS) $(MRUBY_ROOT)/build/host/lib/libmruby.a
+
+build_mruby_targets=
+ifdef NGX_OPENSSL_SRC
+  NGX_OPENSSL_LIBS = $(NGX_OPENSSL_SRC)/.openssl/lib/libssl.a $(NGX_OPENSSL_SRC)/.openssl/lib/libcrypto.a
+  CFLAGS := -I$(NGX_OPENSSL_SRC)/.openssl/include $(CFLAGS)
+  LDFLAGS := -L$(NGX_OPENSSL_SRC)/.openssl/lib $(LDFLAGS)
+  LIBS := $(NGX_OPENSSL_LIBS) $(LIBS)
+  build_mruby_targets := openssl
+endif
+
+#   the default target
+all: ngx_mruby
+
+#   install
+install:
+	cd $(NGX_SRC_ROOT) && $(MAKE) install
+
+#   cleanup
+clean:
+	-rm -rf mrbgems_config
+
+#   clobber
+clobber: clean_mruby clean
+	-rm -rf tmp autom4te.cache config.status config.log build
+
+#   build mruby
+build_mruby: $(build_mruby_targets)
+	cd $(MRUBY_ROOT) && $(RAKE) MRUBY_CONFIG=$(NGX_MRUBY_ROOT)/build_config.rb
+
+build_mruby_with_fpic: $(build_mruby_targets)
+	cd $(MRUBY_ROOT) && $(RAKE) MRUBY_CONFIG=$(NGX_MRUBY_ROOT)/build_config_dynamic.rb
+
+#   clean mruby
+clean_mruby:
+	cd $(MRUBY_ROOT) && $(RAKE) deep_clean && rm -rf build
+
+
+#   nginx
+make_ngx_mruby:
+	cd $(NGX_SRC_ROOT) && $(MAKE)
+
+ngx_mruby: generate_gems_config
+	cd $(NGX_SRC_ROOT) && $(NGX_CONFIGURE) --add-module=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
+
+ngx_mruby_dynamic: generate_gems_config_dynamic
+	cd $(NGX_SRC_ROOT) && $(NGX_CONFIGURE) --add-dynamic-module=$(NGX_MRUBY_ROOT) --add-module=$(NDK_ROOT) $(NGX_CONFIG_OPT) && $(MAKE)
+
+#   create mrbgems config
+generate_gems_config:
+	@echo CORE_LIBS=\"\$$CORE_LIBS $(LDFLAGS) $(LIBS)\" > ./mrbgems_config
+	@echo CORE_INCS=\"\$$CORE_INCS $(CFLAGS)\" >> ./mrbgems_config
+
+generate_gems_config_dynamic:
+	@echo ngx_module_libs=\"\$(LDFLAGS) \$(LIBS)\" > ./mrbgems_config_dynamic
+	@echo CORE_LIBS=\"\$$CORE_LIBS \$(LDFLAGS) \$(LIBS)\" >> ./mrbgems_config_dynamic
+
+openssl:
+	cd $(NGX_OPENSSL_SRC) \
+	&& if [ -f Makefile ]; then $(MAKE) clean; fi \
+	&& ./config --prefix=$(NGX_OPENSSL_SRC)/.openssl no-shared $(NGX_OPENSSL_OPT)  \
+	&& $(MAKE) \
+	&& $(MAKE) install_sw LIBDIR=lib
+
+.PHONY: install
