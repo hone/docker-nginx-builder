@@ -51,4 +51,5 @@ MRuby::Build.new do |conf|
   # conf.gem :github => 'matsumoto-r/mruby-capability'
   # conf.gem :github => 'matsumoto-r/mruby-cgroup'
 
+  conf.gem :core => 'mruby-eval'
 end
