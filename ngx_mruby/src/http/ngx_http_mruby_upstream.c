@@ -52,8 +52,8 @@ static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)
   if (ctx) {
     mrb_free(mrb, ctx);
   }
-  mrb_data_init(self, NULL, &ngx_mrb_upstream_context_type);
-
+  DATA_TYPE(self) = &ngx_mrb_upstream_context_type;
+  DATA_PTR(self) = NULL;
   ctx = (ngx_mruby_upstream_context *)mrb_malloc(mrb, sizeof(ngx_mruby_upstream_context));
 
   ctx->upstream = upstream;
@@ -76,7 +76,7 @@ static mrb_value ngx_mrb_upstream_init(mrb_state *mrb, mrb_value self)
     }
   }
 
-  mrb_data_init(self, ctx, &ngx_mrb_upstream_context_type);
+  DATA_PTR(self) = ctx;
 
   if (ctx->us == NULL || ctx->peers == NULL) {
     mrb_raisef(mrb, E_RUNTIME_ERROR, "%S not found upstream config", upstream);
@@ -134,19 +134,11 @@ static mrb_value ngx_mrb_upstream_set_server(mrb_state *mrb, mrb_value self)
   ngx_url_t u;
   mrb_value server;
   ngx_http_request_t *r = ngx_mrb_get_request();
-  u_char *serverp;
 
   mrb_get_args(mrb, "o", &server);
-  serverp = ngx_palloc(r->pool, RSTRING_LEN(server) + 1);
-  if (serverp == NULL) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s ERROR %s:%d: memory allocate failed", MODULE_NAME, __func__,
-                  __LINE__);
-    return mrb_nil_value();
-  }
-  ngx_cpystrn(serverp, (u_char *)RSTRING_PTR(server), RSTRING_LEN(server) + 1);
 
   ngx_memzero(&u, sizeof(ngx_url_t));
-  u.url.data = serverp;
+  u.url.data = (u_char *)RSTRING_PTR(server);
   u.url.len = RSTRING_LEN(server);
   u.default_port = 80;
   if (ngx_parse_url(r->pool, &u) != NGX_OK) {
@@ -167,7 +159,6 @@ void ngx_mrb_upstream_class_init(mrb_state *mrb, struct RClass *class)
   struct RClass *class_upstream;
 
   class_upstream = mrb_define_class_under(mrb, class, "Upstream", mrb->object_class);
-  MRB_SET_INSTANCE_TT(class_upstream, MRB_TT_DATA);
   mrb_define_method(mrb, class_upstream, "initialize", ngx_mrb_upstream_init, MRB_ARGS_REQ(2));
   mrb_define_method(mrb, class_upstream, "keepalive_cache", ngx_mrb_upstream_get_cache, MRB_ARGS_NONE());
   mrb_define_method(mrb, class_upstream, "keepalive_cache=", ngx_mrb_upstream_set_cache, MRB_ARGS_REQ(1));

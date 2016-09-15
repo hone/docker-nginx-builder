@@ -24,7 +24,7 @@ fi
 if [ "$NGINX_CONFIG_OPT_ENV" != "" ]; then
     NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT_ENV
 else
-    NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} --with-http_stub_status_module --with-stream --without-stream_access_module"
+    NGINX_CONFIG_OPT='--prefix='`pwd`"${NGINX_INSTALL_DIR} --with-http_stub_status_module --with-stream --without-stream_access_module"
 fi
 
 if [ "$NUM_THREADS_ENV" != "" ]; then
@@ -41,6 +41,12 @@ fi
 echo "NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT"
 echo "NUM_THREADS=$NUM_THREADS"
 
+if [ ! -d "./mruby/src" ]; then
+    echo "mruby Downloading ..."
+    git submodule init
+    git submodule update
+    echo "mruby Downloading ... Done"
+fi
 cd mruby
 if [ -d "./${BUILD_DIR}" ]; then
     echo "mruby Cleaning ..."

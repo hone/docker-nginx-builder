@@ -3573,12 +3573,7 @@ skips(parser_state *p, const char *s)
 static int
 newtok(parser_state *p)
 {
-  if (p->tokbuf != p->buf) {
-    mrb_free(p->mrb, p->tokbuf);
-    p->tokbuf = p->buf;
-    p->tsiz = MRB_PARSER_TOKBUF_SIZE;
-  }
-  p->tidx = 0;
+  p->bidx = 0;
   return p->column - 1;
 }
 
@@ -3586,7 +3581,7 @@ static void
 tokadd(parser_state *p, int32_t c)
 {
   char utf8[4];
-  int i, len;
+  unsigned len;
 
   /* mrb_assert(-0x10FFFF <= c && c <= 0xFF); */
   if (c >= 0) {
@@ -3620,51 +3615,42 @@ tokadd(parser_state *p, int32_t c)
       len = 4;
     }
   }
-  if (p->tidx+len >= p->tsiz) {
-    if (p->tsiz >= MRB_PARSER_TOKBUF_MAX) {
-      p->tidx += len;
-      return;
+  if (p->bidx+len <= MRB_PARSER_BUF_SIZE) {
+    unsigned i;
+    for (i = 0; i < len; i++) {
+      p->buf[p->bidx++] = utf8[i];
     }
-    p->tsiz *= 2;
-    if (p->tokbuf == p->buf) {
-      p->tokbuf = (char*)mrb_malloc(p->mrb, p->tsiz);
-      memcpy(p->tokbuf, p->buf, MRB_PARSER_TOKBUF_SIZE);
-    }
-    else {
-      p->tokbuf = (char*)mrb_realloc(p->mrb, p->tokbuf, p->tsiz);
-    }
-  }
-  for (i = 0; i < len; i++) {
-    p->tokbuf[p->tidx++] = utf8[i];
   }
 }
 
 static int
 toklast(parser_state *p)
 {
-  return p->tokbuf[p->tidx-1];
+  return p->buf[p->bidx-1];
 }
 
 static void
 tokfix(parser_state *p)
 {
-  if (p->tidx >= MRB_PARSER_TOKBUF_MAX) {
-    p->tidx = MRB_PARSER_TOKBUF_MAX-1;
+  int i = p->bidx, imax = MRB_PARSER_BUF_SIZE - 1;
+
+  if (i > imax) {
+    i = imax;
     yyerror(p, "string too long (truncated)");
   }
-  p->tokbuf[p->tidx] = '\0';
+  p->buf[i] = '\0';
 }
 
 static const char*
 tok(parser_state *p)
 {
-  return p->tokbuf;
+  return p->buf;
 }
 
 static int
 toklen(parser_state *p)
 {
-  return p->tidx;
+  return p->bidx;
 }
 
 #define IS_ARG() (p->lstate == EXPR_ARG || p->lstate == EXPR_CMDARG)
@@ -5210,7 +5196,7 @@ parser_yylex(parser_state *p)
         c = nextc(p);
       }
       if (c < 0) {
-        if (p->tidx == 1) {
+        if (p->bidx == 1) {
           yyerror(p, "incomplete instance variable syntax");
         }
         else {
@@ -5219,7 +5205,7 @@ parser_yylex(parser_state *p)
         return 0;
       }
       else if (isdigit(c)) {
-        if (p->tidx == 1) {
+        if (p->bidx == 1) {
           yyerror_i(p, "'@%c' is not allowed as an instance variable name", c);
         }
         else {
@@ -5500,8 +5486,6 @@ mrb_parser_new(mrb_state *mrb)
 #if defined(PARSER_TEST) || defined(PARSER_DEBUG)
   yydebug = 1;
 #endif
-  p->tsiz = MRB_PARSER_TOKBUF_SIZE;
-  p->tokbuf = p->buf;
 
   p->lex_strterm = NULL;
   p->all_heredocs = p->parsing_heredoc = NULL;
@@ -5516,9 +5500,6 @@ mrb_parser_new(mrb_state *mrb)
 
 MRB_API void
 mrb_parser_free(parser_state *p) {
-  if (p->tokbuf != p->buf) {
-    mrb_free(p->mrb, p->tokbuf);
-  }
   mrb_pool_close(p->pool);
 }
 

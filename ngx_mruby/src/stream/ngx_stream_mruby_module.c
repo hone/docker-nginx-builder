@@ -46,16 +46,9 @@ typedef struct {
 
 typedef struct {
 
-  ngx_stream_mruby_conf_ctx_t *ctx;
   ngx_mrb_code_t *code;
 
 } ngx_stream_mruby_srv_conf_t;
-
-#define NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mrb, code)                                                                    \
-  if (code != NGX_CONF_UNSET_PTR && mrb && (code)->ctx) {                                                              \
-    mrbc_context_free(mrb, (code)->ctx);                                                                               \
-    (code)->ctx = NULL;                                                                                                \
-  }
 
 /* stream session mruby handler */
 static ngx_int_t ngx_stream_mruby_handler(ngx_stream_session_t *s);
@@ -129,7 +122,7 @@ static ngx_command_t ngx_stream_mruby_commands[] = {
 
 #if (nginx_version > 1011001)
 static ngx_stream_module_t ngx_stream_mruby_module_ctx = {
-    NULL,                  /* preconfiguration */
+    NULL, /* preconfiguration */
     ngx_stream_mruby_init, /* postconfiguration */
 
     ngx_stream_mruby_create_main_conf, /* create main configuration */
@@ -175,13 +168,9 @@ static mrb_state *ngx_stream_mrb_state_conf(ngx_conf_t *cf)
 
 static void ngx_stream_mruby_cleanup(void *data)
 {
-  ngx_stream_mruby_main_conf_t *mmcf = data;
+  mrb_state *mrb = data;
 
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mmcf->ctx->mrb, mmcf->init_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mmcf->ctx->mrb, mmcf->init_worker_code);
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mmcf->ctx->mrb, mmcf->exit_worker_code);
-
-  mrb_close(mmcf->ctx->mrb);
+  mrb_close(mrb);
 }
 
 static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
@@ -214,7 +203,7 @@ static void *ngx_stream_mruby_create_main_conf(ngx_conf_t *cf)
   ngx_stream_mrb_class_init(mmcf->ctx->mrb);
 
   cln->handler = ngx_stream_mruby_cleanup;
-  cln->data = mmcf;
+  cln->data = mmcf->ctx->mrb;
 
   ictx = ngx_pcalloc(cf->pool, sizeof(ngx_stream_mruby_internal_ctx_t));
   if (ictx == NULL) {
@@ -233,37 +222,16 @@ static char *ngx_stream_mruby_init_main_conf(ngx_conf_t *cf, void *conf)
 }
 
 /* create directive template */
-
-static void ngx_stream_mruby_srv_conf_cleanup(void *data)
-{
-  ngx_stream_mruby_srv_conf_t *mscf = data;
-
-  NGX_MRUBY_CODE_MRBC_CONTEXT_FREE(mscf->ctx->mrb, mscf->code);
-}
-
 static void *ngx_stream_mruby_create_srv_conf(ngx_conf_t *cf)
 {
   ngx_stream_mruby_srv_conf_t *mscf;
-  ngx_pool_cleanup_t *cln;
-
-  cln = ngx_pool_cleanup_add(cf->pool, 0);
-  if (cln == NULL) {
-    return NULL;
-  }
 
   mscf = ngx_pcalloc(cf->pool, sizeof(ngx_stream_mruby_srv_conf_t));
   if (mscf == NULL) {
     return NULL;
   }
-  mscf->ctx = ngx_pcalloc(cf->pool, sizeof(ngx_stream_mruby_conf_ctx_t));
-  if (mscf->ctx == NULL) {
-    return NULL;
-  }
 
   mscf->code = NGX_CONF_UNSET_PTR;
-
-  cln->handler = ngx_stream_mruby_srv_conf_cleanup;
-  cln->data = mscf;
 
   return mscf;
 }
@@ -414,7 +382,7 @@ static ngx_int_t ngx_stream_mruby_shared_state_compile(ngx_conf_t *cf, mrb_state
     p = mrb_parse_string(mrb, (char *)code->code.string, code->ctx);
   }
 
-  if (p == NULL || (0 < p->nerr)) {
+  if (p == NULL) {
     return NGX_ERROR;
   }
 
@@ -587,8 +555,6 @@ static char *ngx_stream_mruby_build_file(ngx_conf_t *cf, ngx_command_t *cmd, voi
   ngx_mrb_code_t *code;
   ngx_int_t rc;
 
-  mscf->ctx->mrb = mrb;
-
   value = cf->args->elts;
   code = ngx_stream_mruby_mrb_code_from_file(cf->pool, &value[1]);
 
@@ -616,8 +582,6 @@ static char *ngx_stream_mruby_build_code(ngx_conf_t *cf, ngx_command_t *cmd, voi
   ngx_str_t *value;
   ngx_mrb_code_t *code;
   ngx_int_t rc;
-
-  mscf->ctx->mrb = mrb;
 
   value = cf->args->elts;
   code = ngx_stream_mruby_mrb_code_from_string(cf->pool, &value[1]);

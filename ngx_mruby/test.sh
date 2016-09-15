@@ -19,8 +19,12 @@ fi
 
 NGINX_DEFUALT_OPT='--with-http_stub_status_module --with-http_ssl_module'
 
-if [ $NGINX_SRC_MINOR -ge 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
+if [ $NGINX_SRC_MINOR -ge 9 ]; then
+  if [ $NGINX_SRC_PATCH -ge 6 ]; then
     NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT} --with-stream --without-stream_access_module"
+  else
+  NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT}"
+  fi
 else
   NGINX_CONFIG_OPT="--prefix=${NGINX_INSTALL_DIR} ${NGINX_DEFUALT_OPT}"
 fi
@@ -39,7 +43,12 @@ fi
 echo "NGINX_CONFIG_OPT=$NGINX_CONFIG_OPT"
 echo "NUM_THREADS=$NUM_THREADS"
 
-export NGX_MRUBY_CFLAGS=-DMRB_GC_STRESS
+if [ ! -d "./mruby/src" ]; then
+    echo "mruby Downloading ..."
+    git submodule init
+    git submodule update
+    echo "mruby Downloading ... Done"
+fi
 
 if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
 
@@ -55,7 +64,7 @@ if [ "$ONLY_BUILD_NGX_MRUBY" = "" ]; then
       echo "nginx Downloading ... Done"
       tar xf ${NGINX_SRC_VER}.tar.gz
   fi
-  ln -snf ${NGINX_SRC_VER} nginx_src
+  ln -sf ${NGINX_SRC_VER} nginx_src
   NGINX_SRC=`pwd`'/nginx_src'
   cd ..
 
@@ -90,8 +99,10 @@ ps -C nginx && killall nginx
 sed -e "s|__NGXDOCROOT__|${NGINX_INSTALL_DIR}/html/|g" test/conf/nginx.conf > ${NGINX_INSTALL_DIR}/conf/nginx.conf
 cd ${NGINX_INSTALL_DIR}/html && sh -c 'yes "" | openssl req -new -days 365 -x509 -nodes -keyout localhost.key -out localhost.crt' && sh -c 'yes "" | openssl req -new -days 1 -x509 -nodes -keyout dummy.key -out dummy.crt' && cd -
 
-if [ $NGINX_SRC_MINOR -ge 10 ] || [ $NGINX_SRC_MINOR -eq 9 -a $NGINX_SRC_PATCH -ge 6 ]; then
-  cat test/conf/nginx.stream.conf >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
+if [ $NGINX_SRC_MINOR -ge 9 ]; then
+  if [ $NGINX_SRC_PATCH -ge 6 ]; then
+    cat test/conf/nginx.stream.conf >> ${NGINX_INSTALL_DIR}/conf/nginx.conf
+  fi
 fi
 
 if [ -n "$BUILD_DYNAMIC_MODULE" ]; then
