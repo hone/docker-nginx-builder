@@ -745,7 +745,7 @@ mrb_hash_keys(mrb_state *mrb, mrb_value hash)
  *
  */
 
-MRB_API mrb_value
+static mrb_value
 mrb_hash_values(mrb_state *mrb, mrb_value hash)
 {
   khash_t(ht) *h = RHASH_TBL(hash);

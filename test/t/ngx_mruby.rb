@@ -426,15 +426,10 @@ t.assert('ngx_mruby - issue_172_2', 'location /issue_172_2') do
   t.assert_equal expect_content.length, res["content-length"].to_i
 end
 
-t.assert('ngx_mruby - Nginx FALSE TRUE value', 'location /nginx_false_true') do
-  res = HttpRequest.new.get base + '/nginx_false_true/'
-  t.assert_equal "01", res["body"]
-end
-
 #
 # nginx stream test verison 1.9.6 later
 #
-if nginx_version.split(".")[1].to_i >= 10 || (nginx_version.split(".")[1].to_i == 9 && nginx_version.split(".")[2].to_i >= 6)
+if nginx_version.split(".")[1].to_i >= 9 && nginx_version.split(".")[2].to_i >= 6
   base1 = "http://127.0.0.1:12345"
   base2 = "http://127.0.0.1:12346"
   t.assert('ngx_mruby - stream tcp load balancer', '127.0.0.1:12345 to 127.0.0.1:58080 which changed from 127.0.0.1:58081 by mruby') do

@@ -254,13 +254,14 @@ class String
   #     "abcd".insert(-1, 'X')   #=> "abcdX"
   #
   def insert(idx, str)
-    if idx == -1
-      return self << str
-    elsif idx < 0
-      idx += 1
-    end
-    self[idx, 0] = str
-    self
+    pos = idx.to_i
+    pos += self.size + 1 if pos < 0
+
+    raise IndexError, "index #{idx.to_i} out of string" if pos < 0 || pos > self.size
+
+    return self + str if pos == -1
+    return str + self if pos == 0
+    return self[0..pos - 1] + str + self[pos..-1]
   end
 
   ##
@@ -354,7 +355,7 @@ class String
 
   def chars(&block)
     if block_given?
-      self.split('').each do |i|
+      self.split('').map do |i|
         block.call(i)
       end
       self
@@ -362,21 +363,13 @@ class String
       self.split('')
     end
   end
-
-  def each_char(&block)
-    return to_enum :each_char unless block
-
-    split('').each do |i|
-      block.call(i)
-    end
-    self
-  end
+  alias each_char chars
 
   def codepoints(&block)
     len = self.size
 
     if block_given?
-      self.split('').each do|x|
+      self.split('').map do|x|
         block.call(x.ord)
       end
       self

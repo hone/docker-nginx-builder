@@ -544,7 +544,7 @@ done:
         if (args.verbose) {
           mrb_codedump_all(mrb, proc);
         }
-        /* pass a proc for evaluation */
+        /* pass a proc for evaulation */
         /* evaluate the bytecode */
         result = mrb_vm_run(mrb,
             proc,

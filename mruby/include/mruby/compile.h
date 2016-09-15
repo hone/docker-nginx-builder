@@ -102,8 +102,7 @@ struct mrb_parser_heredoc_info {
   mrb_ast_node *doc;
 };
 
-#define MRB_PARSER_TOKBUF_MAX 65536
-#define MRB_PARSER_TOKBUF_SIZE 256
+#define MRB_PARSER_BUF_SIZE 1024
 
 /* parser structure */
 struct mrb_parser_state {
@@ -131,10 +130,8 @@ struct mrb_parser_state {
   mrb_ast_node *locals;
 
   mrb_ast_node *pb;
-  char *tokbuf;
-  char buf[MRB_PARSER_TOKBUF_SIZE];
-  int tidx;
-  int tsiz;
+  char buf[MRB_PARSER_BUF_SIZE];
+  int bidx;
 
   mrb_ast_node *all_heredocs;	/* list of mrb_parser_heredoc_info* */
   mrb_ast_node *heredocs_from_nextline;
