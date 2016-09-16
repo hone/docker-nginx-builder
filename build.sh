@@ -6,6 +6,7 @@ cache_dir=$3
 
 nginx_tarball="nginx-$VERSION.tar.gz"
 ngx_mruby_dir="ngx_mruby"
+ngx_mruby_version=$(grep -oP '(?<=MODULE_VERSION ")(\d+\.\d+\.\d+)(?=")' $cache_dir/$ngx_mruby_dir/src/http/ngx_http_mruby_module.h | tr -d '\n')
 
 cd $cache_dir
 if [ ! -f $nginx_tarball ]; then
@@ -34,4 +35,4 @@ make install
 cd $workspace_dir/build/sbin
 strip nginx
 mkdir -p $output_dir
-tar ckzf $output_dir/nginx-$VERSION.tgz nginx
+tar ckzf $output_dir/nginx-$VERSION-ngx_mruby-$ngx_mruby_version.tgz nginx
