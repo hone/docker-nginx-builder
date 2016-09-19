@@ -5,6 +5,8 @@ output_dir=$2
 cache_dir=$3
 
 nginx_tarball="nginx-$VERSION.tar.gz"
+ngx_mruby_dir="ngx_mruby"
+ngx_mruby_version=$(grep -oP '(?<=MODULE_VERSION ")(\d+\.\d+\.\d+)(?=")' $cache_dir/$ngx_mruby_dir/src/http/ngx_http_mruby_module.h | tr -d '\n')
 
 cd $cache_dir
 if [ ! -f $nginx_tarball ]; then
@@ -14,11 +16,23 @@ fi
 
 cd $workspace_dir
 tar zxf $cache_dir/$nginx_tarball
-cd nginx-$VERSION
-./configure --prefix=$workspace_dir/build --with-http_ssl_module
+cp -rf $cache_dir/$ngx_mruby_dir .
+
+nginx_src="$workspace_dir/nginx-$VERSION"
+ngx_mruby_src="$workspace_dir/$ngx_mruby_dir"
+
+pushd $ngx_mruby_dir
+./configure --with-ngx-src-root=$nginx_src
+make build_mruby
+make generate_gems_config
+popd
+
+cd $nginx_src
+./configure --prefix=$workspace_dir/build --with-http_ssl_module --with-debug --add-module=$ngx_mruby_src --add-module=$ngx_mruby_src/dependence/ngx_devel_kit
 make
 make install
+
 cd $workspace_dir/build/sbin
 strip nginx
 mkdir -p $output_dir
-tar ckzf $output_dir/nginx-$VERSION.tgz nginx
+tar ckzf $output_dir/nginx-$VERSION-ngx_mruby-$ngx_mruby_version.tgz nginx
